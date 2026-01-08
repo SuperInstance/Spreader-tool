@@ -1,0 +1,69 @@
+{
+  "name": "@superinstance/spreader",
+  "version": "1.0.0",
+  "description": "Parallel multi-agent information gathering tool for comprehensive research and analysis",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "spreader": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "multi-agent",
+    "research",
+    "parallel",
+    "llm",
+    "cli"
+  ],
+  "author": "SuperInstance",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
+    "chalk": "^5.3.0",
+    "cli-progress": "^3.12.0",
+    "commander": "^12.0.0",
+    "inquirer": "^9.2.12",
+    "openai": "^6.15.0",
+    "ora": "^8.0.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.5",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.18.0",
+    "@typescript-eslint/parser": "^6.18.0",
+    "@vitest/coverage-v8": "^1.1.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SuperInstance/Spreader-tool"
+  },
+  "bugs": {
+    "url": "https://github.com/SuperInstance/Spreader-tool/issues"
+  },
+  "homepage": "https://github.com/SuperInstance/Spreader-tool#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "examples"
+  ]
+}

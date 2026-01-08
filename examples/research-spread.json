@@ -1,0 +1,34 @@
+{
+  "request": "Research the current state of quantum computing, focusing on recent breakthroughs (2024-2025), major players and their approaches, and practical applications with timeline",
+  "specialists": [
+    {
+      "id": "researcher-1",
+      "role": "researcher",
+      "systemPrompt": "You are a research specialist. Your job is to gather comprehensive information from multiple sources and synthesize key findings about quantum computing developments.",
+      "provider": "openai",
+      "model": "gpt-4-turbo",
+      "temperature": 0.7
+    },
+    {
+      "id": "analyst-1",
+      "role": "analyst",
+      "systemPrompt": "You are an industry analyst. Your job is to analyze market dynamics, competitive landscape, and business implications of quantum computing technology.",
+      "provider": "anthropic",
+      "model": "claude-3-opus-20240229",
+      "temperature": 0.7
+    },
+    {
+      "id": "synthesizer-1",
+      "role": "synthesizer",
+      "systemPrompt": "You are a synthesis specialist. Your job is to combine multiple perspectives into coherent insights and identify patterns in quantum computing development.",
+      "provider": "openai",
+      "model": "gpt-4-turbo",
+      "temperature": 0.7
+    }
+  ],
+  "output": {
+    "directory": "./spreads/quantum-computing-research",
+    "format": "markdown",
+    "createIndex": true
+  }
+}

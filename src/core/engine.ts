@@ -13,6 +13,8 @@ import type {
   FullContext,
   SpreadMetadata,
   SpreadStatus,
+  ProgressUpdate,
+  ProgressCallback,
 } from '../types/index.js';
 import { ContextManager } from './context-manager.js';
 import { SpecialistCoordinator } from './coordinator.js';
@@ -41,22 +43,9 @@ export interface EngineOptions {
   verbose?: boolean;
 
   /**
-   * Progress callback
+   * Progress callback for real-time updates
    */
-  onProgress?: (progress: EngineProgress) => void;
-}
-
-/**
- * Engine progress information
- */
-export interface EngineProgress {
-  spreadId: string;
-  status: SpreadStatus;
-  completedCount: number;
-  totalCount: number;
-  currentSpecialist?: string;
-  message: string;
-  timestamp: Date;
+  onProgress?: ProgressCallback;
 }
 
 /**
@@ -79,14 +68,15 @@ export class SpreaderEngine {
   private contextManager: ContextManager;
   private coordinator: SpecialistCoordinator;
   private summarizer: RalphWiggumSummarizer;
-  private options: Required<EngineOptions>;
+  private options: Required<Omit<EngineOptions, 'onProgress'>> & { onProgress?: ProgressCallback };
+  private completedSpecialistIds: string[] = [];
 
   constructor(options: EngineOptions = {}) {
     this.options = {
       maxParallel: options.maxParallel ?? 10,
       checkinInterval: options.checkinInterval ?? 30000,
       verbose: options.verbose ?? false,
-      onProgress: options.onProgress ?? (() => {}),
+      onProgress: options.onProgress,
     };
 
     this.contextManager = new ContextManager({
@@ -95,6 +85,7 @@ export class SpreaderEngine {
     this.coordinator = new SpecialistCoordinator({
       verbose: this.options.verbose,
       maxParallel: this.options.maxParallel,
+      onProgress: (update) => this.handleCoordinatorProgress(update),
     });
     this.summarizer = new RalphWiggumSummarizer();
   }
@@ -109,6 +100,9 @@ export class SpreaderEngine {
     const startTime = Date.now();
     const spreadId = this.generateSpreadId(config);
 
+    // Reset tracking state
+    this.completedSpecialistIds = [];
+
     // Initialize metadata
     const metadata: SpreadMetadata = {
       id: spreadId,
@@ -122,15 +116,41 @@ export class SpreaderEngine {
       outputDirectory: config.output.directory,
     };
 
-    this.emitProgress(metadata, 'Initializing spread...');
+    this.emitProgress({
+      stage: 'initializing',
+      spreadId,
+      completedSpecialists: [],
+      totalSpecialists: config.specialists.length,
+      progress: 0,
+      message: 'Initializing spread...',
+      timestamp: Date.now(),
+    });
 
     try {
       // Prepare context for all specialists
-      this.emitProgress(metadata, 'Preparing context distribution...');
+      this.emitProgress({
+        stage: 'preparing',
+        spreadId,
+        completedSpecialists: [],
+        totalSpecialists: config.specialists.length,
+        progress: 0.1,
+        message: 'Preparing context distribution...',
+        timestamp: Date.now(),
+      });
+
       const contextPackages = await this.prepareContextPackages(config);
 
       // Execute specialists in parallel
-      this.emitProgress(metadata, `Launching ${config.specialists.length} specialists...`);
+      this.emitProgress({
+        stage: 'executing',
+        spreadId,
+        completedSpecialists: [],
+        totalSpecialists: config.specialists.length,
+        progress: 0.2,
+        message: `Launching ${config.specialists.length} specialists...`,
+        timestamp: Date.now(),
+      });
+
       const results = await this.executeSpecialists(
         config,
         contextPackages,
@@ -138,7 +158,16 @@ export class SpreaderEngine {
       );
 
       // Generate summary
-      this.emitProgress(metadata, 'Synthesizing results...');
+      this.emitProgress({
+        stage: 'summarizing',
+        spreadId,
+        completedSpecialists: this.completedSpecialistIds,
+        totalSpecialists: config.specialists.length,
+        progress: 0.9,
+        message: 'Synthesizing results...',
+        timestamp: Date.now(),
+      });
+
       const summary = await this.synthesizeResults(config, results);
 
       // Update metadata
@@ -149,7 +178,19 @@ export class SpreaderEngine {
 
       const duration = Date.now() - startTime;
 
-      this.emitProgress(metadata, 'Spread completed successfully!');
+      this.emitProgress({
+        stage: 'complete',
+        spreadId,
+        completedSpecialists: this.completedSpecialistIds,
+        totalSpecialists: config.specialists.length,
+        progress: 1,
+        message: 'Spread completed successfully!',
+        timestamp: Date.now(),
+        metadata: {
+          tokensUsed: metadata.totalTokens,
+          duration,
+        },
+      });
 
       return {
         metadata,
@@ -162,7 +203,18 @@ export class SpreaderEngine {
       metadata.status = 'failed';
       metadata.completedAt = new Date();
 
-      this.emitProgress(metadata, `Spread failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.emitProgress({
+        stage: 'failed',
+        spreadId,
+        completedSpecialists: this.completedSpecialistIds,
+        totalSpecialists: config.specialists.length,
+        progress: this.completedSpecialistIds.length / config.specialists.length,
+        message: `Spread failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+        metadata: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
 
       throw error;
     }
@@ -218,10 +270,16 @@ export class SpreaderEngine {
       const specialist = config.specialists[i];
       const context = contextPackages.get(specialist.id)!;
 
-      this.emitProgress(
-        metadata,
-        `Executing specialist ${i + 1}/${config.specialists.length}: ${specialist.role}`
-      );
+      this.emitProgress({
+        stage: 'executing',
+        spreadId: metadata.id,
+        currentSpecialist: specialist.role,
+        completedSpecialists: this.completedSpecialistIds,
+        totalSpecialists: config.specialists.length,
+        progress: 0.2 + (i / config.specialists.length) * 0.7,
+        message: `Executing specialist ${i + 1}/${config.specialists.length}: ${specialist.role}`,
+        timestamp: Date.now(),
+      });
 
       // Execute specialist with context and previous summary
       const result = await this.coordinator.executeSpecialist(
@@ -234,6 +292,7 @@ export class SpreaderEngine {
 
       results.push(result);
       metadata.completedCount++;
+      this.completedSpecialistIds.push(specialist.id);
 
       // Generate summary for next specialist (Ralph Wiggum mode)
       if (i < config.specialists.length - 1) {
@@ -247,10 +306,20 @@ export class SpreaderEngine {
       }
 
       // Emit progress
-      this.emitProgress(
-        metadata,
-        `Completed ${specialist.role}: ${result.summary.substring(0, 100)}...`
-      );
+      this.emitProgress({
+        stage: 'executing',
+        spreadId: metadata.id,
+        currentSpecialist: specialist.role,
+        completedSpecialists: this.completedSpecialistIds,
+        totalSpecialists: config.specialists.length,
+        progress: 0.2 + ((i + 1) / config.specialists.length) * 0.7,
+        message: `Completed ${specialist.role}: ${result.summary.substring(0, 100)}...`,
+        timestamp: Date.now(),
+        metadata: {
+          tokensUsed: result.tokensUsed,
+          duration: result.duration,
+        },
+      });
     }
 
     return results;
@@ -308,20 +377,24 @@ export class SpreaderEngine {
   /**
    * Emit progress event
    */
-  private emitProgress(metadata: SpreadMetadata, message: string): void {
-    const progress: EngineProgress = {
-      spreadId: metadata.id,
-      status: metadata.status,
-      completedCount: metadata.completedCount,
-      totalCount: metadata.specialistCount,
-      message,
-      timestamp: new Date(),
-    };
-
-    this.options.onProgress(progress);
+  private emitProgress(update: ProgressUpdate): void {
+    if (this.options.onProgress) {
+      this.options.onProgress(update);
+    }
 
     if (this.options.verbose) {
-      console.log(`[${progress.timestamp.toISOString()}] ${message}`);
+      console.log(`[${new Date(update.timestamp).toISOString()}] [${update.stage}] ${update.message}`);
+    }
+  }
+
+  /**
+   * Handle coordinator progress updates
+   */
+  private handleCoordinatorProgress(update: any): void {
+    // Coordinator updates are already handled through executeSpecialists
+    // This is a placeholder for more granular tracking if needed
+    if (this.options.verbose && update.message) {
+      console.log(`  └─ ${update.message}`);
     }
   }
 

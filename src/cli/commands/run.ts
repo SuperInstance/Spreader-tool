@@ -98,29 +98,36 @@ export async function runCommand(
     };
 
     // Create engine
+    const progressBar = new cliProgress.SingleBar({
+      format: 'Progress: {bar} {percentage}% | {value}/{total} | {stage}',
+      hideCursor: true,
+    }, cliProgress.Presets.shades_classic);
+
+    progressBar.start(100, 0, { stage: 'initializing' });
+
     const engine = new SpreaderEngine({
       verbose: options.verbose || false,
       onProgress: (progress) => {
+        // Update spinner text
         spinner.text = progress.message;
+
+        // Update progress bar
+        progressBar.update(Math.round(progress.progress * 100), {
+          stage: progress.stage,
+        });
+
+        // Log verbose output
+        if (options.verbose) {
+          console.log(chalk.gray(`[${new Date(progress.timestamp).toISOString()}] [${progress.stage}] ${progress.message}`));
+          if (progress.currentSpecialist) {
+            console.log(chalk.gray(`  └─ Current: ${progress.currentSpecialist}`));
+          }
+          if (progress.completedSpecialists.length > 0) {
+            console.log(chalk.gray(`  └─ Completed: ${progress.completedSpecialists.length}/${progress.totalSpecialists}`));
+          }
+        }
       },
     });
-
-    // Execute spread
-    spinner.text = `Executing ${specialistTypes.length} specialists...`;
-
-    const progressBar = new cliProgress.SingleBar({
-      format: '{bar} {percentage}% | {value}/{total} specialists',
-    }, cliProgress.Presets.shades_classic);
-
-    progressBar.start(specialistTypes.length, 0);
-
-    // Update progress bar
-    engine['options'].onProgress = (progress: any) => {
-      progressBar.update(progress.completedCount);
-      if (options.verbose) {
-        console.log(chalk.gray(`[${progress.timestamp.toISOString()}] ${progress.message}`));
-      }
-    };
 
     const result = await engine.executeSpread(spreadConfig);
 

@@ -213,3 +213,84 @@ export interface IndexMetadata {
   totalTokens: number;
   duration: number;
 }
+
+/**
+ * Progress callback function type
+ */
+export interface ProgressCallback {
+  (update: ProgressUpdate): void;
+}
+
+/**
+ * Progress update information
+ */
+export interface ProgressUpdate {
+  /**
+   * Current stage of execution
+   */
+  stage: 'initializing' | 'preparing' | 'executing' | 'summarizing' | 'complete' | 'failed';
+
+  /**
+   * ID of the spread
+   */
+  spreadId: string;
+
+  /**
+   * Current specialist being executed (if any)
+   */
+  currentSpecialist?: string;
+
+  /**
+   * IDs of completed specialists
+   */
+  completedSpecialists: string[];
+
+  /**
+   * Total number of specialists
+   */
+  totalSpecialists: number;
+
+  /**
+   * Progress percentage (0-1)
+   */
+  progress: number;
+
+  /**
+   * Human-readable status message
+   */
+  message: string;
+
+  /**
+   * Timestamp of the update
+   */
+  timestamp: number;
+
+  /**
+   * Additional metadata (optional)
+   */
+  metadata?: {
+    tokensUsed?: number;
+    duration?: number;
+    error?: string;
+  };
+}
+
+/**
+ * Re-export communication types for convenience
+ */
+export type {
+  AgentMessage,
+  MessageHandler,
+  CommunicatingAgent,
+  MessageBusOptions,
+  MessageDeliveryStatus,
+  MessageTracking,
+  MessageBusMetrics,
+  RequestOptions,
+  AgentCapabilities,
+  MessageFilter,
+  MessageSubscription,
+  BroadcastOptions,
+} from '../communication/index.js';
+
+export { MessageType } from '../communication/index.js';

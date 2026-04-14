@@ -1,32 +1,35 @@
 # Spreader-tool
 
-A TypeScript utility for efficient data spreading, part of the **Cocapn Fleet**.
-
 ## Description
-Spreader-tool provides a simple API to distribute data across multiple targets with type‑safe guarantees. Ideal for projects that need scalable broadcasting or message routing.
+Spreader-tool is a TypeScript utility that enables efficient data spreading and manipulation. It is part of the **Cocapn Fleet** (github.com/SuperInstance).
 
 ## Installation
 ```bash
-npm install spreader-tool
+npm install @cocapn/spreader-tool
 ```
 
 ## Usage
-```ts
-import { spread } from 'spreader-tool';
+```typescript
+import { spread } from '@cocapn/spreader-tool';
 
-const data = { foo: 'bar' };
-spread(data, ['targetA', 'targetB']);
+// Example
+const result = spread(sourceData, spreadConfig);
+console.log(result);
 ```
 
-Run the examples:
+Run the provided examples:
 ```bash
-npm run build
-node examples/index.js
+npm run example   # see examples/ folder
+```
+
+## Testing
+```bash
+npm run test      # uses Vitest (vitest.config.ts)
 ```
 
 ## Related
 - **Cocapn Fleet** – https://github.com/SuperInstance  
-- **Message-in-a-bottle** (example implementation) – `message-in-a-bottle/`  
+- **TypeScript** – https://www.typescriptlang.org/  
 
----  
-© 2024 SuperInstance. Licensed under the MIT License.
+## License
+MIT – see [LICENSE](LICENSE).

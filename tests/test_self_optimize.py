@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from spreader.self_optimize import SelfOptimizer, TestResult, OptimizationOpportunity
+from spreader.self_optimize import SelfOptimizer, RunResult, OptimizationOpportunity
 from spreader.development_patterns import DevelopmentPattern, PatternLibrary
 from spreader.types import KPIMetrics, SEED_LOCK_KPI
 

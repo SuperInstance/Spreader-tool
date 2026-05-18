@@ -34,8 +34,8 @@ from .types import (
 
 
 @dataclass
-class TestResult:
-    """Parsed result from a single test."""
+class RunResult:
+    """Parsed result from a single test run."""
 
     node_id: str
     outcome: str  # passed, failed, error, skipped
@@ -475,9 +475,9 @@ class SelfOptimizer:
         except Exception as e:
             return f"ERROR running pytest: {e}"
 
-    def _parse_pytest_output(self, output: str) -> List[TestResult]:
-        """Parse pytest -v output into TestResult objects."""
-        results: List[TestResult] = []
+    def _parse_pytest_output(self, output: str) -> List[RunResult]:
+        """Parse pytest -v output into RunResult objects."""
+        results: List[RunResult] = []
 
         # Match lines like: tests/test_foo.py::TestClass::test_bar PASSED
         pattern = re.compile(
@@ -491,7 +491,7 @@ class SelfOptimizer:
                 outcome = "skipped"
             else:
                 outcome = outcome_raw.lower()
-            results.append(TestResult(
+            results.append(RunResult(
                 node_id=node_id,
                 outcome=outcome,
                 duration=0.0,
@@ -517,19 +517,19 @@ class SelfOptimizer:
                 failed = int(summary.group(2) or 0)
                 errors = int(summary.group(3) or 0)
                 for i in range(passed):
-                    results.append(TestResult(
+                    results.append(RunResult(
                         node_id=f"summary::test_{i}",
                         outcome="passed",
                         duration=0.0,
                     ))
                 for i in range(failed):
-                    results.append(TestResult(
+                    results.append(RunResult(
                         node_id=f"summary::failure_{i}",
                         outcome="failed",
                         duration=0.0,
                     ))
                 for i in range(errors):
-                    results.append(TestResult(
+                    results.append(RunResult(
                         node_id=f"summary::error_{i}",
                         outcome="error",
                         duration=0.0,
@@ -540,7 +540,7 @@ class SelfOptimizer:
     # ── Internal: categorization ──────────────────────────────────────────
 
     @staticmethod
-    def _categorize_failure(result: TestResult) -> str:
+    def _categorize_failure(result: RunResult) -> str:
         """Categorize a test failure by type."""
         msg = (result.message or "") + (result.traceback or "")
         msg_lower = msg.lower()

@@ -1,5 +1,7 @@
 # spreader-tool
 
+
+![CI](https://github.com/SuperInstance/spreader-tool/actions/workflows/ci.yml/badge.svg)
 **Intelligence tiling for PLATO rooms — frozen context windows, seed locking, deadband detection.**
 
 Spreader watches PLATO rooms for **deadband**: the gap between what hardcoded rules handle and what needs real intelligence. When a room enters deadband, Spreader freezes reasoning snapshots, validates them, and locks proven-good checkpoints (Seeds) that deploy fleet-wide.

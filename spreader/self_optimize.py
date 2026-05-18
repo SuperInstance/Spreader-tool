@@ -577,58 +577,63 @@ class SelfOptimizer:
         return self._baseline_loc
 
     def _estimate_coverage_gap(self) -> float:
-        """Estimate coverage gap from source/test module ratio.
+        """Estimate coverage gap from source/test function ratio.
 
-        A rough heuristic: ratio of source modules without test files.
+        Uses AST to count public functions in source files and test functions
+        (starting with test_) in test files, then computes the gap.
         """
+        import ast as _ast
+
         src_dir = self.project_root / "spreader"
         test_dir = self.project_root / "tests"
 
         if not src_dir.is_dir():
             return 0.0
 
-        source_modules = set()
+        # Count public (non-underscore) functions in source files
+        source_count = 0
         for f in src_dir.glob("*.py"):
-            if f.name.startswith("_") and f.name != "__init__.py":
+            try:
+                content = f.read_text()
+            except OSError:
                 continue
-            source_modules.add(f.stem)
+            source_count += len(self._extract_functions(content))
 
-        test_modules = set()
+        # Count test functions (starting with test_) in test files
+        tested_count = 0
         if test_dir.is_dir():
             for f in test_dir.glob("test_*.py"):
-                test_modules.add(f.stem.replace("test_", ""))
+                try:
+                    content = f.read_text()
+                except OSError:
+                    continue
+                try:
+                    tree = _ast.parse(content)
+                except SyntaxError:
+                    continue
+                for node in _ast.walk(tree):
+                    if isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
+                        if node.name.startswith("test_"):
+                            tested_count += 1
 
-        if not source_modules:
-            return 0.0
-
-        uncovered = len(source_modules - test_modules)
-        gap = (uncovered / len(source_modules)) * 100.0
+        gap = (1.0 - min(1.0, tested_count / max(source_count, 1))) * 100.0
         return gap
 
     # ── Internal: function extraction ─────────────────────────────────────
 
     @staticmethod
     def _extract_functions(content: str) -> List[Tuple[str, int]]:
-        """Extract top-level function names and their line counts."""
+        """Extract function names and their line counts using AST."""
+        import ast as _ast
         functions: List[Tuple[str, int]] = []
-        lines = content.splitlines()
-        current_func: Optional[str] = None
-        func_start: int = 0
-
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped.startswith("def ") and not stripped.startswith("def _"):
-                # Save previous function
-                if current_func is not None:
-                    functions.append((current_func, i - func_start))
-                current_func = stripped.split("(")[0].replace("def ", "")
-                func_start = i
-            elif stripped.startswith("class ") and current_func is not None:
-                # End of function at class boundary
-                functions.append((current_func, i - func_start))
-                current_func = None
-
-        if current_func is not None:
-            functions.append((current_func, len(lines) - func_start))
-
+        try:
+            tree = _ast.parse(content)
+        except SyntaxError:
+            return []
+        for node in _ast.walk(tree):
+            if isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
+                if node.name.startswith("_"):
+                    continue
+                if node.end_lineno is not None:
+                    functions.append((node.name, node.end_lineno - node.lineno + 1))
         return functions

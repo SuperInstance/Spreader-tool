@@ -160,7 +160,7 @@ python -m pytest tests/ -v    # 241 tests, <1 second
 | [plato-types](https://github.com/SuperInstance/plato-types) | Tile lifecycle, Lamport clocks |
 | [plato-training](https://github.com/SuperInstance/plato-training) | Micro models, hardware deploy |
 | [tensor-spline](https://github.com/SuperInstance/tensor-spline) | SplineLinear compression |
-| [forgemaster](https://github.com/SuperInstance/forgemaster) | Fleet agent (constraint theory) |
+| [forgemaster](https://github.com/SuperInstance/forgemaster) (dead) | Fleet agent (constraint theory) (dead) |
 
 ## License
 

@@ -424,11 +424,32 @@ class TestOptimizationOpportunities:
         impacts = [o.impact for o in opps]
         assert impacts == sorted(impacts, reverse=True)
 
-    def test_coverage_gap_detected(self, opt):
-        """Self-optimize module itself should be detected as uncovered."""
-        opps = opt.find_optimization_opportunities()
+    def test_coverage_gap_detected(self, opt, tmp_path):
+        """A module without a test file should be flagged as a coverage gap.
+
+        Note (2026-08-25): this test used to pass vacuously — every real
+        spreader module had a test file EXCEPT mock_backend. Adding
+        tests/test_mock_backend.py closed the last gap, so we now test
+        against a synthetic project with a genuinely untested module.
+        The optimizer optimized past its own test. Fitting.
+        """
+        src = tmp_path / "spreader"
+        tests = tmp_path / "tests"
+        src.mkdir()
+        tests.mkdir()
+        (src / "orphan.py").write_text("def f():\n    return 1\n")
+        (tests / "test_other.py").write_text("def test_x():\n    pass\n")
+        tmp_opt = SelfOptimizer(project_root=str(tmp_path))
+        opps = tmp_opt.find_optimization_opportunities()
         categories = [o.category for o in opps]
         assert "coverage" in categories
+        cov = [o for o in opps if o.category == "coverage"]
+        assert any("orphan" in o.description for o in cov)
+
+    def test_fully_tested_project_has_no_coverage_gaps(self, opt):
+        """Every spreader module now has a test file — no coverage gaps."""
+        opps = opt.find_optimization_opportunities()
+        assert all(o.category != "coverage" for o in opps)
 
 
 # ── Test: TestResult parsing ──────────────────────────────────────────────
